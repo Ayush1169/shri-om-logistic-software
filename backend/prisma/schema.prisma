@@ -1,0 +1,317 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model Role {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  users       User[]
+}
+
+model User {
+  id              Int              @id @default(autoincrement())
+  fullName        String
+  username        String           @unique
+  password        String
+  email           String?
+  mobile          String?
+  roleId          Int
+  isActive        Boolean          @default(true)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  branchId        Int
+  createdBilties  Bilty[]
+  branch          Branch           @relation(fields: [branchId], references: [id])
+  role            Role             @relation(fields: [roleId], references: [id])
+  createdChallans VehicleChallan[]
+
+  @@index([branchId], map: "User_branchId_fkey")
+  @@index([roleId], map: "User_roleId_fkey")
+}
+
+model Branch {
+  id         Int              @id @default(autoincrement())
+  code       String           @unique
+  address    String
+  city       String
+  state      String
+  mobile     String?
+  email      String?
+  isActive   Boolean          @default(true)
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+  companyId  Int
+  branchName String
+  bilties    Bilty[]
+  company    Company          @relation(fields: [companyId], references: [id])
+  customers  Customer[]
+  users      User[]
+  challans   VehicleChallan[]
+
+  @@index([companyId], map: "Branch_companyId_fkey")
+}
+
+model Company {
+  id          Int       @id @default(autoincrement())
+  gstNumber   String?   @unique
+  panNumber   String?   @unique
+  address     String
+  city        String
+  state       String
+  mobile      String?
+  email       String?
+  logo        String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  companyName String
+  branches    Branch[]
+  drivers     Driver[]
+  vehicles    Vehicle[]
+}
+
+model Customer {
+  id               Int      @id @default(autoincrement())
+  customerCode     String   @unique
+  gstNumber        String?  @unique
+  panNumber        String?
+  contactPerson    String?
+  mobile           String
+  email            String?
+  address          String
+  city             String
+  state            String
+  creditLimit      Decimal? @db.Decimal(12, 2)
+  paymentTerms     Int?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  branchId         Int
+  customerName     String
+  consigneeBilties Bilty[]  @relation("Consignee")
+  consignorBilties Bilty[]  @relation("Consignor")
+  branch           Branch   @relation(fields: [branchId], references: [id])
+
+  @@index([branchId], map: "Customer_branchId_fkey")
+}
+
+model Vehicle {
+  id            Int              @id @default(autoincrement())
+  vehicleNumber String           @unique
+  ownerName     String
+  vehicleType   String
+  capacity      Decimal?         @db.Decimal(10, 2)
+  gpsNumber     String?
+  companyId     Int
+  isActive      Boolean          @default(true)
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+  bilties       Bilty[]
+  company       Company          @relation(fields: [companyId], references: [id])
+  challans      VehicleChallan[]
+  document      VehicleDocument?
+
+  @@index([companyId], map: "Vehicle_companyId_fkey")
+}
+
+model VehicleDocument {
+  id              Int       @id @default(autoincrement())
+  vehicleId       Int       @unique
+  rcNumber        String?
+  insuranceNumber String?
+  permitNumber    String?
+  fitnessNumber   String?
+  pollutionNumber String?
+  insuranceExpiry DateTime?
+  permitExpiry    DateTime?
+  fitnessExpiry   DateTime?
+  pollutionExpiry DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  vehicle         Vehicle   @relation(fields: [vehicleId], references: [id])
+}
+
+model Driver {
+  id               Int              @id @default(autoincrement())
+  driverName       String
+  mobile           String
+  aadhaarNumber    String           @unique
+  licenseNumber    String           @unique
+  address          String
+  emergencyContact String?
+  companyId        Int
+  isActive         Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  bilties          Bilty[]
+  company          Company          @relation(fields: [companyId], references: [id])
+  document         DriverDocument?
+  challans         VehicleChallan[]
+
+  @@index([companyId], map: "Driver_companyId_fkey")
+}
+
+model DriverDocument {
+  id            Int       @id @default(autoincrement())
+  driverId      Int       @unique
+  licenseExpiry DateTime?
+  aadhaarFront  String?
+  aadhaarBack   String?
+  licenseImage  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  driver        Driver    @relation(fields: [driverId], references: [id])
+}
+
+model Bilty {
+  id               Int             @id @default(autoincrement())
+  biltyNumber      String          @unique
+  bookingDate      DateTime        @default(now())
+  branchId         Int
+  consignorId      Int?
+  consigneeId      Int?
+  pickupAddress    String?
+  deliveryAddress  String?
+  goodsDescription String
+  packageCount     Int
+  actualWeight     Decimal?        @db.Decimal(10, 2)
+  chargeableWeight Decimal?        @db.Decimal(10, 2)
+  freight          Decimal         @db.Decimal(12, 2)
+  gst              Decimal?        @db.Decimal(12, 2)
+  hamali           Decimal?        @db.Decimal(12, 2)
+  loadingCharges   Decimal?        @db.Decimal(12, 2)
+  unloadingCharges Decimal?        @db.Decimal(12, 2)
+  insuranceCharges Decimal?        @db.Decimal(12, 2)
+  totalAmount      Decimal         @db.Decimal(12, 2)
+  paymentType      PaymentType
+  eWayBillNumber   String?
+  remarks          String?
+  status           BiltyStatus     @default(BOOKED)
+  createdById      Int
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  driverId         Int?
+  vehicleId        Int?
+  challanId        Int?
+  consigneeName    String?
+  pMarka           String?
+  branch           Branch          @relation(fields: [branchId], references: [id])
+  challan          VehicleChallan? @relation(fields: [challanId], references: [id])
+  consignee        Customer?       @relation("Consignee", fields: [consigneeId], references: [id])
+  consignor        Customer?       @relation("Consignor", fields: [consignorId], references: [id])
+  createdBy        User            @relation(fields: [createdById], references: [id])
+  driver           Driver?         @relation(fields: [driverId], references: [id])
+  vehicle          Vehicle?        @relation(fields: [vehicleId], references: [id])
+
+  @@index([bookingDate])
+  @@index([status])
+  @@index([branchId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([challanId])
+  @@index([consigneeId], map: "Bilty_consigneeId_fkey")
+  @@index([consignorId], map: "Bilty_consignorId_fkey")
+  @@index([createdById], map: "Bilty_createdById_fkey")
+}
+
+model VehicleChallan {
+  id            Int               @id @default(autoincrement())
+  challanNumber String            @unique
+  challanDate   DateTime
+  vehicleId     Int?
+  driverId      Int?
+  branchId      Int
+  route         String?
+  fileName      String
+  fileUrl       String
+  totalBilties  Int               @default(0)
+  totalPackages Int               @default(0)
+  totalWeight   Decimal?          @db.Decimal(10, 2)
+  totalFreight  Decimal?          @db.Decimal(12, 2)
+  status        OCRStatus         @default(UPLOADED)
+  createdById   Int
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  ocrProvider   String?
+  ocrVersion    String?
+  aiModel       String?
+  bilties       Bilty[]
+  previewRows   OCRBiltyPreview[]
+  imports       OCRImport[]
+  branch        Branch            @relation(fields: [branchId], references: [id])
+  createdBy     User              @relation(fields: [createdById], references: [id])
+  driver        Driver?           @relation(fields: [driverId], references: [id])
+  vehicle       Vehicle?          @relation(fields: [vehicleId], references: [id])
+
+  @@index([branchId])
+  @@index([vehicleId])
+  @@index([driverId])
+  @@index([createdById], map: "VehicleChallan_createdById_fkey")
+}
+
+model OCRImport {
+  id             Int            @id @default(autoincrement())
+  challanId      Int
+  confidence     Float?
+  processingTime Int?
+  rawText        String?        @db.LongText
+  rawJson        Json?
+  imported       Boolean        @default(false)
+  errorMessage   String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  challan        VehicleChallan @relation(fields: [challanId], references: [id])
+
+  @@index([challanId])
+}
+
+model OCRBiltyPreview {
+  id          Int            @id @default(autoincrement())
+  challanId   Int
+  serialNo    Int?
+  lrNo        String?
+  biltyDate   String?
+  weight      Decimal?       @db.Decimal(10, 2)
+  packages    Int?
+  freight     Decimal?       @db.Decimal(12, 2)
+  goods       String?
+  consignee   String?
+  destination String?
+  marka       String?
+  createdAt   DateTime       @default(now())
+  imported    Boolean        @default(false)
+  challan     VehicleChallan @relation(fields: [challanId], references: [id])
+
+  @@index([challanId])
+}
+
+enum PaymentType {
+  PAID
+  TO_PAY
+  BILLING
+}
+
+enum BiltyStatus {
+  BOOKED
+  LOADED
+  IN_TRANSIT
+  DELIVERED
+  CANCELLED
+}
+
+enum OCRStatus {
+  UPLOADED
+  PROCESSING
+  COMPLETED
+  FAILED
+  IMPORTED
+}
