@@ -50,6 +50,7 @@ type PreviewRow = ChallanPreviewRow & {
   goodsDescription?: string | null;
   goods?: string | null;
   paymentType?: string | null;
+  destination?: string | null;
 };
 
 export default function ChallanPreviewModal({

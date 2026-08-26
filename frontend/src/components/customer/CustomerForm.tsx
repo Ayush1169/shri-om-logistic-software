@@ -51,32 +51,29 @@ const handleSubmit = async (
   e.preventDefault();
 
   try {
-    
     const payload = {
-  ...formData,
-  creditLimit: Number(formData.creditLimit),
-  paymentTerms: Number(formData.paymentTerms),
-};
+      ...formData,
+      creditLimit: formData.creditLimit,
+      paymentTerms: Number(formData.paymentTerms),
+    };
 
-if (isEdit && initialData) {
-  await updateCustomer(initialData.id, payload);
+    if (isEdit && initialData) {
+      await updateCustomer(initialData.id, payload);
 
-  alert("Customer Updated Successfully");
-} else {
-  await createCustomer(payload);
+      alert("Customer Updated Successfully");
+    } else {
+      await createCustomer(payload);
 
-  alert("Customer Created Successfully");
-}
-
-    alert("Customer Created");
+      alert("Customer Created Successfully");
+    }
 
     router.push("/dashboard/customer");
-  } catch (error: any) {
-  console.log(error.response?.data);
-  alert(error.response?.data?.message);
-}
-};
 
+  } catch (error: any) {
+    console.log(error.response?.data);
+    alert(error.response?.data?.message);
+  }
+};
 
   return (
     <form
