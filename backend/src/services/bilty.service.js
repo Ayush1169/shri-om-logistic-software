@@ -112,11 +112,13 @@ export const createBilty = async (data, userId) => {
 export const getBilties = async (
   page = 1,
   limit = 10,
-  search = ""
+  search = "",
+  biltyType = "PAKKA"
 ) => {
-  const skip = (page - 1) * limit;
+  const where = {
+  biltyType,
 
-  const where = search
+  ...(search
     ? {
         OR: [
           {
@@ -148,40 +150,167 @@ export const getBilties = async (
               },
             },
           },
+          {
+            consigneeName: {
+              contains: search,
+            },
+          },
+          {
+            pMarka: {
+              contains: search,
+            },
+          },
         ],
       }
-    : {};
-
-  const [bilties, total] = await Promise.all([
-    prisma.bilty.findMany({
-      where,
-      skip,
-      take: Number(limit),
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        branch: true,
-        consignor: true,
-        consignee: true,
-        vehicle: true,
-        driver: true,
-      },
-    }),
-
-    prisma.bilty.count({
-      where,
-    }),
-  ]);
-
-  return {
-    bilties,
-    total,
-    page: Number(page),
-    totalPages: Math.ceil(total / limit),
-  };
+    : {}),
 };
 
+  // IMPORTANT:
+  // Pehle saari matching bilties lao.
+  // Pagination baad mein GROUPS par lagegi.
+  const allBilties = await prisma.bilty.findMany({
+    where,
+
+    orderBy: {
+      createdAt: "desc",
+    },
+
+    include: {
+      branch: true,
+      consignor: true,
+      consignee: true,
+      vehicle: true,
+      driver: true,
+      challan: true,
+    },
+  });
+
+  console.log("========== BILTY GROUP DEBUG ==========");
+
+for (const bilty of allBilties) {
+  console.log({
+    id: bilty.id,
+    biltyNumber: bilty.biltyNumber,
+    challanId: bilty.challanId,
+    challanVehicleNumber: bilty.challan?.vehicleNumber,
+    vehicleId: bilty.vehicleId,
+    vehicleNumber: bilty.vehicle?.vehicleNumber,
+  });
+}
+
+console.log("======================================");
+
+  // -----------------------------------------
+  // GROUP BY CHALLAN
+  // -----------------------------------------
+
+  const groupsMap = new Map();
+
+  for (const bilty of allBilties) {
+    const vehicleNumber =
+      bilty.challan?.vehicleNumber ||
+      bilty.vehicle?.vehicleNumber ||
+      "Vehicle Not Assigned";
+
+    const challanId = bilty.challanId ?? null;
+
+    /*
+     * IMPORTANT:
+     * Challan ID is part of group ID.
+     *
+     * Isliye agar same vehicle number
+     * alag-alag challan mein hai,
+     * dono alag groups rahenge.
+     */
+    const groupId = challanId
+      ? `challan-${challanId}`
+      : `bilty-${bilty.id}`;
+
+    if (!groupsMap.has(groupId)) {
+      groupsMap.set(groupId, {
+        id: groupId,
+
+        challanId,
+
+        vehicleNumber,
+
+        challanNumber:
+          bilty.challan?.challanNumber || undefined,
+
+        challanDate:
+          bilty.challan?.challanDate
+            ? bilty.challan.challanDate.toISOString()
+            : undefined,
+
+        totalBilties: 0,
+        totalPackages: 0,
+        totalWeight: 0,
+        totalFreight: 0,
+
+        bilties: [],
+      });
+    }
+
+    const group = groupsMap.get(groupId);
+
+    group.bilties.push(bilty);
+
+    group.totalBilties += 1;
+
+    group.totalPackages += Number(
+      bilty.packageCount || 0
+    );
+
+    group.totalWeight += Number(
+      bilty.actualWeight || 0
+    );
+
+    group.totalFreight += Number(
+      bilty.freight || 0
+    );
+  }
+
+  const allGroups = Array.from(
+    groupsMap.values()
+  );
+
+  // -----------------------------------------
+  // GROUP LEVEL PAGINATION
+  // -----------------------------------------
+
+  const pageNumber = Number(page);
+  const pageLimit = Number(limit);
+
+  const total = allGroups.length;
+
+  const totalPages = Math.ceil(
+    total / pageLimit
+  );
+
+  const startIndex =
+    (pageNumber - 1) * pageLimit;
+
+  const groups = allGroups.slice(
+    startIndex,
+    startIndex + pageLimit
+  );
+
+  console.log("========== NEW BILTY GROUP API ==========");
+  console.log("TOTAL BILTIES:", allBilties.length);
+  console.log("TOTAL GROUPS:", allGroups.length);
+  console.log("GROUPS:", allGroups);
+  console.log("==========================================");
+
+  return {
+    groups,
+
+    total,
+
+    page: pageNumber,
+
+    totalPages,
+  };
+};
 /**
  * Get Bilty By Id
  */
@@ -198,6 +327,7 @@ export const getBiltyById = async (id) => {
       vehicle: true,
       driver: true,
       createdBy: true,
+      challan: true,
     },
   });
 };
@@ -308,5 +438,60 @@ export const updateBiltyStatus = async (id, status) => {
       driver: true,
       challan: true,
     },
+  });
+};
+
+/**
+ * Delete all bilties belonging to one challan
+ */
+export const deleteBiltiesByChallan = async (challanId) => {
+  const id = Number(challanId);
+
+  if (!id) {
+    throw new Error("Invalid challan ID");
+  }
+
+  const challan = await prisma.vehicleChallan.findUnique({
+    where: {
+      id,
+    },
+  });
+
+  if (!challan) {
+    throw new Error("Challan not found");
+  }
+
+  return await prisma.$transaction(async (tx) => {
+    // Delete all bilties of this challan
+    const deletedBilties = await tx.bilty.deleteMany({
+      where: {
+        challanId: id,
+      },
+    });
+
+    // Delete OCR preview rows
+    await tx.oCRBiltyPreview.deleteMany({
+      where: {
+        challanId: id,
+      },
+    });
+
+    // Delete OCR import records
+    await tx.oCRImport.deleteMany({
+      where: {
+        challanId: id,
+      },
+    });
+
+    // Finally delete challan
+    await tx.vehicleChallan.delete({
+      where: {
+        id,
+      },
+    });
+
+    return {
+      deletedBilties: deletedBilties.count,
+    };
   });
 };

@@ -48,10 +48,14 @@ export interface Challan {
   status: string;
 }
 
-export const uploadChallan = async (file: File) => {
+export const uploadChallan = async (
+  file: File,
+  biltyType: "PAKKA" | "KACHHA"
+) => {
   const formData = new FormData();
 
   formData.append("challan", file);
+  formData.append("biltyType", biltyType);
 
   const response = await api.post(
     "/challans/upload",

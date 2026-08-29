@@ -1,10 +1,16 @@
-export function parseManifest(text) {
+export function parseManifest(text, biltyType = "PAKKA") {
   const header = parseHeader(text);
 
   const rows = extractRows(text)
     .map(cleanRow)
     .map(tokenizeRow)
-    .map(parseRow);
+    .map((tokens) => parseRow(tokens, biltyType))
+    .filter((row) => row.lrNo);
+
+  console.log("=================================");
+  console.log("BILTY TYPE:", biltyType);
+  console.log("FINAL PARSED BILTY COUNT:", rows.length);
+  console.log("=================================");
 
   return {
     header,
@@ -12,21 +18,43 @@ export function parseManifest(text) {
   };
 }
 
+/* =========================================================
+   HEADER
+========================================================= */
+
 function parseHeader(text) {
-  const challanMatch = text.match(/Challan No\.\s*:-\s*(\d+)/);
+  const challanMatch = text.match(
+    /Challan\s*No\.?\s*[:\-]+\s*(\d+)/i
+  );
 
-  const vehicleMatch = text.match(/\b[A-Z]{2}\d{2}[A-Z]{1,2}-?\d{4}\b/);
+  const vehicleMatch = text.match(
+    /\b[A-Z]{2}\d{2}[A-Z]{1,3}-?\d{4}\b/i
+  );
 
-  const dateMatch = text.match(/(\d{2}\/\d{2}\/\d{2})\s*Date\s*:-/);
+  const dateMatch = text.match(
+    /\b\d{2}[\/-]\d{2}[\/-]\d{2,4}\b/
+  );
 
   return {
-    challanNumber: challanMatch ? challanMatch[1] : null,
-    vehicleNumber: vehicleMatch
-      ? vehicleMatch[0].replace("-", "")
+    challanNumber: challanMatch
+      ? challanMatch[1]
       : null,
-    challanDate: dateMatch ? dateMatch[1] : null,
+
+    vehicleNumber: vehicleMatch
+      ? vehicleMatch[0]
+          .replace(/-/g, "")
+          .toUpperCase()
+      : null,
+
+    challanDate: dateMatch
+      ? dateMatch[0].replace(/-/g, "/")
+      : null,
   };
 }
+
+/* =========================================================
+   ROW EXTRACTION
+========================================================= */
 
 function extractRows(text) {
   const lines = text
@@ -34,10 +62,79 @@ function extractRows(text) {
     .map((line) => line.trim())
     .filter(Boolean);
 
-  return lines.filter((line) =>
-    /^\d+\s+\d+\s+\d{2}\/\d{2}\/\d{2}/.test(line)
-  );
+  const rows = [];
+
+  let currentRow = null;
+
+  for (const line of lines) {
+
+    /*
+     * KACHHA + PAKKA
+     *
+     * Actual Kachha:
+     *
+     * 70.00 1 19/08/26 ...
+     *
+     * Actual Pakka:
+     *
+     * 20 1 21/08/26 ...
+     *
+     * Dono ko support karenge.
+     */
+
+    const rowStart =
+      /^(?:\d+(?:\.\d+)?)\s+\d+\s+\d{2}[\/-]\d{2}[\/-]\d{2,4}\b/.test(
+        line
+      );
+
+    if (rowStart) {
+
+      if (currentRow) {
+        rows.push(currentRow);
+      }
+
+      currentRow = line;
+
+      continue;
+    }
+
+    /*
+     * Kachha PDF mein LR number kabhi
+     * next line par aa sakta hai.
+     *
+     * Example:
+     *
+     * MYR- 405191 -
+     */
+
+    const lrContinuation =
+      /^[A-Z0-9]+-\s*\d{4,}\s*-?$/.test(line) ||
+      /^\d{4,}\s*-?$/.test(line);
+
+    if (currentRow && lrContinuation) {
+      currentRow += " " + line;
+    }
+  }
+
+  if (currentRow) {
+    rows.push(currentRow);
+  }
+
+  console.log("========== EXTRACTED ROWS ==========");
+  console.log("TOTAL EXTRACTED ROWS:", rows.length);
+
+  rows.forEach((row, index) => {
+    console.log(`${index + 1}:`, row);
+  });
+
+  console.log("====================================");
+
+  return rows;
 }
+
+/* =========================================================
+   CLEAN
+========================================================= */
 
 function cleanRow(row) {
   return row
@@ -46,176 +143,319 @@ function cleanRow(row) {
     .trim();
 }
 
+/* =========================================================
+   TOKENIZE
+========================================================= */
+
 function tokenizeRow(row) {
-  return row.split(" ").filter(Boolean);
+  return row
+    .split(" ")
+    .filter(Boolean);
 }
 
-function parseRow(tokens) {
-  // --------------------------------------------------
-  // BASIC FIELDS
-  // --------------------------------------------------
+/* =========================================================
+   PARSE ROW
+========================================================= */
 
-  const weight = Number(tokens[0]) || null;
+function parseRow(tokens, biltyType) {
 
-  const serialNo = Number(tokens[1]) || null;
+  let weight = null;
+  let serialNo = null;
+  let biltyDate = null;
 
-  const biltyDate = tokens[2] || null;
+  /*
+   * KACHHA/PDF FORMAT:
+   *
+   * 70.00 1 19/08/26
+   *
+   * weight = 70.00
+   * serial = 1
+   * date   = 19/08/26
+   */
 
-  // --------------------------------------------------
-  // FIND LR NUMBER
-  // --------------------------------------------------
-
-  const lrIndex = tokens.findIndex(
-    (token) => /^\d{6,}$/.test(token)
-  );
-
-  const lrNo =
-    lrIndex !== -1
-      ? tokens[lrIndex]
-      : null;
-
-  // --------------------------------------------------
-  // FREIGHT
-  // --------------------------------------------------
-
-  let freight = null;
-
-  if (lrIndex !== -1) {
-    const freightToken = tokens[lrIndex + 1];
-
-    if (
-      freightToken &&
-      /^\d+(?:\.\d+)?$/.test(freightToken)
-    ) {
-      freight = Number(freightToken);
-    }
+  if (
+    tokens.length >= 3 &&
+    /^\d+(?:\.\d+)?$/.test(tokens[0]) &&
+    /^\d+$/.test(tokens[1]) &&
+    /^\d{2}[\/-]\d{2}[\/-]\d{2,4}$/.test(tokens[2])
+  ) {
+    weight = Number(tokens[0]);
+    serialNo = Number(tokens[1]);
+    biltyDate = tokens[2];
   }
 
-  // --------------------------------------------------
-  // FIND PACKAGE COUNT
-  //
-  // Usually package count is the number immediately
-  // before "-" after the marka/consignee section.
-  // --------------------------------------------------
+  if (
+    weight === null ||
+    serialNo === null ||
+    biltyDate === null
+  ) {
+    console.log("ROW FORMAT NOT RECOGNIZED:", tokens);
 
-  let packages = null;
-  let packageIndex = -1;
+    return {
+      weight: null,
+      serialNo: null,
+      biltyDate: null,
+      lrNo: null,
+      freight: null,
+      packages: null,
+      goods: null,
+      consignee: null,
+      marka: null,
+      pMarka: null,
+      rawTokens: tokens,
+    };
+  }
 
-  for (let i = 3; i < lrIndex; i++) {
-    if (
-      /^\d+$/.test(tokens[i]) &&
-      tokens[i + 1] === "-"
-    ) {
-      packages = Number(tokens[i]);
-      packageIndex = i;
+  /* =======================================================
+     LR NUMBER
+  ======================================================= */
+
+  let lrNo = null;
+
+  let lrIndex = -1;
+
+  for (let i = 3; i < tokens.length; i++) {
+
+    const token = String(tokens[i])
+      .replace(/[,:]/g, "")
+      .trim();
+
+    /*
+     * Prefix + number
+     *
+     * MYR- 405191
+     * BWN- 412588
+     * DB16- 414257
+     * ALPCG- 80003223
+     */
+
+    if (/^[A-Z0-9]+-$/i.test(token)) {
+
+      for (
+        let j = i + 1;
+        j < tokens.length;
+        j++
+      ) {
+
+        const number = String(tokens[j])
+          .replace(/[,:]/g, "")
+          .trim();
+
+        if (/^\d{4,}$/.test(number)) {
+
+          lrNo = `${token}${number}`;
+
+          lrIndex = j;
+
+          break;
+        }
+      }
+
+      if (lrNo) {
+        break;
+      }
+    }
+
+    /*
+     * Complete LR
+     *
+     * MYR-405191
+     */
+
+    if (/^[A-Z0-9]+-\d{4,}$/i.test(token)) {
+
+      lrNo = token;
+
+      lrIndex = i;
+
+      break;
+    }
+
+    /*
+     * Numeric LR
+     */
+
+    if (/^\d{6,}$/.test(token)) {
+
+      lrNo = token;
+
+      lrIndex = i;
+
       break;
     }
   }
 
-  // --------------------------------------------------
-  // GOODS / ITEM
-  //
-  // Everything between DATE and KORBA
-  // --------------------------------------------------
+  /* =======================================================
+     DESTINATION
+  ======================================================= */
 
-  const korbaIndex = tokens.findIndex(
-    (token, index) =>
-      index >= 3 &&
-      token.toUpperCase() === "KORBA"
-  );
+  const destinationIndex =
+    tokens.findIndex(
+      (token, index) =>
+        index >= 3 &&
+        token.toUpperCase() === "KORBA"
+    );
+
+  /* =======================================================
+     GOODS
+  ======================================================= */
 
   let goods = null;
 
-  if (korbaIndex !== -1) {
+  if (destinationIndex !== -1) {
+
     goods = tokens
-      .slice(3, korbaIndex)
+      .slice(3, destinationIndex)
+      .filter(
+        (token) =>
+          !/^[A-Z0-9]+-$/i.test(token)
+      )
       .join(" ")
-      .trim() || null;
+      .trim();
+
+    if (!goods) {
+      goods = null;
+    }
   }
 
-  // --------------------------------------------------
-  // CONSIGNEE + MARKA
-  // --------------------------------------------------
+  /* =======================================================
+     PACKAGES
+  ======================================================= */
 
-  let consignee = null;
-  let marka = null;
+  let packages = null;
 
-  if (
-    korbaIndex !== -1 &&
-    packageIndex !== -1
-  ) {
-    const customerTokens = tokens.slice(
-      korbaIndex + 1,
-      packageIndex
-    );
+  if (destinationIndex !== -1) {
 
-    if (customerTokens.length > 0) {
-      /*
-       * Usually last token before package is P.Marka.
-       *
-       * Example:
-       * TIRUPATI MOTORS CMT 9
-       *
-       * Consignee = TIRUPATI MOTORS
-       * Marka     = CMT
-       */
+    const afterDestination =
+      tokens.slice(destinationIndex + 1);
 
-      if (customerTokens.length >= 2) {
-        marka =
-          customerTokens[
-            customerTokens.length - 1
-          ];
+    /*
+     * Kachha format:
+     *
+     * KORBA 1 - MYR- 405191 -
+     *
+     * OR
+     *
+     * KORBA BADAL 3 - ...
+     */
 
-        consignee =
-          customerTokens
-            .slice(0, -1)
-            .join(" ")
-            .trim() || null;
-      } else {
-        /*
-         * Example:
-         * LAZER ENTERPRISES 1
-         *
-         * There is no clear separate marka.
-         * Treat the token as consignee.
-         */
+    for (let i = 0; i < afterDestination.length; i++) {
 
-        consignee = customerTokens[0];
-        marka = null;
+      if (
+        /^\d+$/.test(afterDestination[i]) &&
+        Number(afterDestination[i]) > 0
+      ) {
+        packages = Number(afterDestination[i]);
+        break;
       }
     }
   }
 
-  // --------------------------------------------------
-  // DEBUG
-  // --------------------------------------------------
+  /* =======================================================
+     PMARKA
+  ======================================================= */
+
+  let marka = null;
+
+  if (destinationIndex !== -1) {
+
+    const afterDestination =
+      tokens.slice(destinationIndex + 1);
+
+    const numericIndex =
+      afterDestination.findIndex(
+        (token) =>
+          /^\d+$/.test(token)
+      );
+
+    if (numericIndex > 0) {
+
+      const possibleMarka =
+        afterDestination[numericIndex - 1];
+
+      if (
+        possibleMarka &&
+        possibleMarka !== "-" &&
+        !/^\d+(?:\.\d+)?$/.test(
+          possibleMarka
+        )
+      ) {
+        marka = possibleMarka;
+      }
+    }
+  }
+
+  /* =======================================================
+     FREIGHT
+  ======================================================= */
+
+  let freight = null;
+
+  /*
+   * Kachha challan mein ToPay/cartage
+   * ke jagah "-" hai.
+   *
+   * Isliye null.
+   *
+   * Pakka mein agar LR ke baad numeric
+   * value hai to use freight maanenge.
+   */
+
+  if (
+    lrIndex !== -1 &&
+    lrIndex + 1 < tokens.length
+  ) {
+
+    const possibleFreight =
+      tokens[lrIndex + 1];
+
+    if (
+      /^\d+(?:\.\d+)?$/.test(
+        possibleFreight
+      )
+    ) {
+      freight = Number(possibleFreight);
+    }
+  }
+
+  /* =======================================================
+     DEBUG
+  ======================================================= */
 
   console.log("========== PARSED ROW ==========");
+
   console.log({
+    biltyType,
     serialNo,
     biltyDate,
-    weight,
+    lrNo,
     goods,
-    consignee,
+    consignee: null,
     marka,
     packages,
-    lrNo,
+    weight,
     freight,
   });
+
   console.log("================================");
 
   return {
-    weight,
     serialNo,
     biltyDate,
-
     lrNo,
     freight,
     packages,
-
+    weight,
     goods,
-    consignee,
+
+    /*
+     * Kachha mein consignee nahi chahiye.
+     */
+    consignee: null,
+
     marka,
+
+    pMarka: marka,
 
     rawTokens: tokens,
   };

@@ -35,37 +35,41 @@ export default function BiltyForm({
   const [vehicles, setVehicles] = useState<any[]>([]);
   const [drivers, setDrivers] = useState<any[]>([]);
 
-  const [form, setForm] = useState({
+   const [form, setForm] = useState({
+    biltyNumber: "",
+    bookingDate: "",
+
     consignorId: "",
     consigneeId: "",
+    consigneeName: "",
 
-    vehicleId: "",
-    driverId: "",
+  vehicleId: "",
+  driverId: "",
 
-    pickupAddress: "",
-    deliveryAddress: "",
+  pickupAddress: "",
+  deliveryAddress: "",
 
-    goodsDescription: "",
+  goodsDescription: "",
+  pMarka: "",
 
-    packageCount: "",
+  packageCount: "",
 
-    actualWeight: "",
-    chargeableWeight: "",
+  actualWeight: "",
+  chargeableWeight: "",
 
-    freight: "",
-    gst: "",
+  freight: "",
+  gst: "",
 
-    hamali: "",
-    loadingCharges: "",
-    unloadingCharges: "",
-    insuranceCharges: "",
+  hamali: "",
+  loadingCharges: "",
+  unloadingCharges: "",
+  insuranceCharges: "",
 
-    paymentType: "PAID" as PaymentType,
+  paymentType: "PAID" as PaymentType,
 
-    eWayBillNumber: "",
-
-    remarks: "",
-  });
+  eWayBillNumber: "",
+  remarks: "",
+});
 
   /**
    * Load Master Data
@@ -102,57 +106,78 @@ export default function BiltyForm({
     if (!bilty) return;
 
     setForm({
-      consignorId: String(bilty.consignorId),
-      consigneeId: String(bilty.consigneeId),
 
-      vehicleId: bilty.vehicleId
-        ? String(bilty.vehicleId)
-        : "",
+      biltyNumber: bilty.biltyNumber || "",
 
-      driverId: bilty.driverId
-        ? String(bilty.driverId)
-        : "",
+  bookingDate: bilty.bookingDate
+    ? bilty.bookingDate.slice(0, 10)
+    : "",
+  consignorId: bilty.consignorId
+    ? String(bilty.consignorId)
+    : "",
 
-      pickupAddress: bilty.pickupAddress,
-      deliveryAddress: bilty.deliveryAddress,
+  consigneeId: bilty.consigneeId
+    ? String(bilty.consigneeId)
+    : "",
 
-      goodsDescription: bilty.goodsDescription,
+  consigneeName:
+  bilty.consigneeName ||
+  bilty.consignee?.customerName ||
+  "",
 
-      packageCount: String(bilty.packageCount),
+  vehicleId: bilty.vehicleId
+    ? String(bilty.vehicleId)
+    : "",
 
-      actualWeight: String(
-        bilty.actualWeight ?? ""
-      ),
+  driverId: bilty.driverId
+    ? String(bilty.driverId)
+    : "",
 
-      chargeableWeight: String(
-        bilty.chargeableWeight ?? ""
-      ),
+  pickupAddress: bilty.pickupAddress || "",
 
-      freight: String(bilty.freight),
+  deliveryAddress: bilty.deliveryAddress || "",
 
-      gst: String(bilty.gst ?? ""),
 
-      hamali: String(bilty.hamali ?? ""),
+  goodsDescription: bilty.goodsDescription || "",
 
-      loadingCharges: String(
-        bilty.loadingCharges ?? ""
-      ),
+  pMarka: bilty.pMarka || "",
 
-      unloadingCharges: String(
-        bilty.unloadingCharges ?? ""
-      ),
+  packageCount: String(bilty.packageCount ?? ""),
 
-      insuranceCharges: String(
-        bilty.insuranceCharges ?? ""
-      ),
+  actualWeight: String(
+    bilty.actualWeight ?? ""
+  ),
 
-      paymentType: bilty.paymentType,
+  chargeableWeight: String(
+    bilty.chargeableWeight ?? ""
+  ),
 
-      eWayBillNumber:
-        bilty.eWayBillNumber || "",
+  freight: String(bilty.freight ?? 0),
 
-      remarks: bilty.remarks || "",
-    });
+  gst: String(bilty.gst ?? 0),
+
+  hamali: String(bilty.hamali ?? 0),
+
+  loadingCharges: String(
+    bilty.loadingCharges ?? 0
+  ),
+
+  unloadingCharges: String(
+    bilty.unloadingCharges ?? 0
+  ),
+
+  insuranceCharges: String(
+    bilty.insuranceCharges ?? 0
+  ),
+
+  paymentType: bilty.paymentType,
+
+  eWayBillNumber:
+    bilty.eWayBillNumber || "",
+
+  remarks:
+    bilty.remarks || "",
+});
   }, [bilty]);
 
   /**
@@ -197,59 +222,68 @@ export default function BiltyForm({
       setLoading(true);
 
       const payload = {
-        branchId: 1,
+  branchId: 1,
 
-        consignorId: Number(form.consignorId),
-        consigneeId: Number(form.consigneeId),
+  consignorId: form.consignorId
+    ? Number(form.consignorId)
+    : null,
 
-        vehicleId: form.vehicleId
-          ? Number(form.vehicleId)
-          : null,
+  consigneeId: form.consigneeId
+    ? Number(form.consigneeId)
+    : null,
 
-        driverId: form.driverId
-          ? Number(form.driverId)
-          : null,
+  consigneeName: form.consigneeName || null,
 
-        pickupAddress: form.pickupAddress,
-        deliveryAddress: form.deliveryAddress,
+  vehicleId: form.vehicleId
+    ? Number(form.vehicleId)
+    : null,
 
-        goodsDescription: form.goodsDescription,
+  driverId: form.driverId
+    ? Number(form.driverId)
+    : null,
 
-        packageCount: Number(form.packageCount),
+  pickupAddress: form.pickupAddress,
+  deliveryAddress: form.deliveryAddress,
 
-        actualWeight: form.actualWeight
-          ? Number(form.actualWeight)
-          : null,
 
-        chargeableWeight: form.chargeableWeight
-          ? Number(form.chargeableWeight)
-          : null,
+  goodsDescription: form.goodsDescription,
 
-        freight: Number(form.freight),
+  pMarka: form.pMarka || null,
 
-        gst: Number(form.gst || 0),
+  packageCount: Number(form.packageCount),
 
-        hamali: Number(form.hamali || 0),
+  actualWeight: form.actualWeight
+    ? Number(form.actualWeight)
+    : null,
 
-        loadingCharges: Number(
-          form.loadingCharges || 0
-        ),
+  chargeableWeight: form.chargeableWeight
+    ? Number(form.chargeableWeight)
+    : null,
 
-        unloadingCharges: Number(
-          form.unloadingCharges || 0
-        ),
+  freight: Number(form.freight),
 
-        insuranceCharges: Number(
-          form.insuranceCharges || 0
-        ),
+  gst: Number(form.gst || 0),
 
-        paymentType: form.paymentType,
+  hamali: Number(form.hamali || 0),
 
-        eWayBillNumber:
-          form.eWayBillNumber,
+  loadingCharges: Number(
+    form.loadingCharges || 0
+  ),
 
-        remarks: form.remarks,
-      };
+  unloadingCharges: Number(
+    form.unloadingCharges || 0
+  ),
+
+  insuranceCharges: Number(
+    form.insuranceCharges || 0
+  ),
+
+  paymentType: form.paymentType,
+
+  eWayBillNumber: form.eWayBillNumber,
+
+  remarks: form.remarks,
+};
             if (isEdit && bilty) {
         await updateBilty(bilty.id, payload);
         toast.success("Bilty updated successfully.");
@@ -311,31 +345,21 @@ export default function BiltyForm({
             </select>
           </div>
 
-          {/* Consignee */}
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Consignee
-            </label>
+         {/* Consignee Name */}
+<div>
+  <label className="mb-1 block text-sm font-medium">
+    Consignee Name
+  </label>
 
-            <select
-              name="consigneeId"
-              value={form.consigneeId}
-              onChange={handleChange}
-              className="w-full rounded-lg border p-2"
-              required
-            >
-              <option value="">Select Consignee</option>
-
-              {customers.map((customer) => (
-                <option
-                  key={customer.id}
-                  value={customer.id}
-                >
-                  {customer.customerName}
-                </option>
-              ))}
-            </select>
-          </div>
+  <input
+    type="text"
+    name="consigneeName"
+    value={form.consigneeName}
+    onChange={handleChange}
+    placeholder="Consignee Name"
+    className="w-full rounded-lg border p-2"
+  />
+</div>
 
           {/* Vehicle */}
           <div>
@@ -433,6 +457,8 @@ export default function BiltyForm({
             className="rounded-lg border p-2"
             required
           />
+
+
         </div>
       </div>
 
@@ -442,7 +468,17 @@ export default function BiltyForm({
           Goods Details
         </h2>
 
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-5">
+
+          <input
+  type="text"
+  name="pMarka"
+  placeholder="P.Marka"
+  value={form.pMarka}
+  onChange={handleChange}
+  className="rounded-lg border p-2"
+/>
+
           <input
             type="text"
             name="goodsDescription"

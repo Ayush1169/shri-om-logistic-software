@@ -9,11 +9,13 @@ import { uploadChallan } from "@/lib/challan";
 interface Props {
   onClose: () => void;
   onSuccess: (challanId: number) => void;
+  biltyType: "PAKKA" | "KACHHA";
 }
 
 export default function ChallanUploadModal({
   onClose,
   onSuccess,
+  biltyType,
 }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -42,7 +44,10 @@ export default function ChallanUploadModal({
     try {
       setUploading(true);
 
-      const response = await uploadChallan(file);
+      const response = await uploadChallan(
+  file,
+  biltyType
+);
 
       const challanId = response?.data?.challan?.id;
 

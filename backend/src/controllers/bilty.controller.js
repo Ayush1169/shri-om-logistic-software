@@ -5,6 +5,7 @@ import {
   updateBilty,
   deleteBilty,
   updateBiltyStatus,
+  deleteBiltiesByChallan,
 } from "../services/bilty.service.js";
 
 import { generateBiltyPdf } from "../services/pdf.service.js";
@@ -53,13 +54,19 @@ export const create = async (req, res) => {
  */
 export const getAll = async (req, res) => {
   try {
-    const { page = 1, limit = 10, search = "" } = req.query;
+    const {
+  page = 1,
+  limit = 10,
+  search = "",
+  biltyType = "PAKKA",
+} = req.query;
 
-    const result = await getBilties(
-      Number(page),
-      Number(limit),
-      search
-    );
+const result = await getBilties(
+  Number(page),
+  Number(limit),
+  search,
+  biltyType
+);
 
     return res.json({
       success: true,
@@ -210,5 +217,29 @@ export const downloadPdf = async (req, res) => {
         message: err.message,
       });
     }
+  }
+};
+
+/**
+ * Delete all bilties of one challan
+ */
+export const removeByChallan = async (req, res) => {
+  try {
+    const result = await deleteBiltiesByChallan(
+      req.params.challanId
+    );
+
+    return res.json({
+      success: true,
+      message: "All bilties of this vehicle challan deleted successfully.",
+      data: result,
+    });
+  } catch (err) {
+    console.error("Delete Challan Bilties Error:", err);
+
+    return res.status(500).json({
+      success: false,
+      message: err.message,
+    });
   }
 };

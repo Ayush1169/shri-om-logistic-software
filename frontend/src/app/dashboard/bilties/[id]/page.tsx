@@ -181,6 +181,16 @@ export default function BiltyDetailsPage() {
                 Vehicle
               </p>
 
+              <div>
+  <p className="text-sm text-gray-500">
+    P.Marka
+  </p>
+
+  <p className="font-semibold">
+    {bilty.pMarka || "-"}
+  </p>
+</div>
+
               <p className="font-semibold">
                 {bilty.vehicle?.vehicleNumber ||
                   "-"}
@@ -261,7 +271,7 @@ export default function BiltyDetailsPage() {
             Goods Details
           </h3>
 
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+          <div className="grid grid-cols-2 gap-6 md:grid-cols-5">
 
             <div>
               <p className="text-sm text-gray-500">

@@ -117,8 +117,36 @@ export interface BiltyResponse {
 
 export interface BiltyListResponse {
   success: boolean;
-  bilties: Bilty[];
+
+  groups: BiltyGroup[];
+
   total: number;
+
   page: number;
+
   totalPages: number;
+
+  bilties?: Bilty[];
+}
+
+export interface BiltyGroup {
+  id: string;
+
+  challanId: number | null;
+
+  vehicleNumber: string;
+
+  challanNumber?: string;
+
+  challanDate?: string;
+
+  totalBilties: number;
+
+  totalPackages: number;
+
+  totalWeight: number;
+
+  totalFreight: number;
+
+  bilties: Bilty[];
 }

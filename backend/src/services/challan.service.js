@@ -280,9 +280,10 @@ const bilty = await tx.bilty.create({
     // MARKA + GOODS
     // =========================
     pMarka:
-      item.pMarka ||
-      row.marka ||
-      null,
+  item.pMarka ||
+  row.pMarka ||
+  row.marka ||
+  null,
 
     goodsDescription:
       item.goodsDescription ||
@@ -361,6 +362,8 @@ const bilty = await tx.bilty.create({
     // STATUS
     // =========================
     status: "BOOKED",
+
+    biltyType: challan.biltyType,
 
     // =========================
     // VEHICLE / DRIVER
@@ -492,6 +495,15 @@ const bilty = await tx.bilty.create({
  */
 
 export async function uploadChallan(req) {
+
+  const biltyType =
+  req.body?.biltyType === "KACHHA"
+    ? "KACHHA"
+    : "PAKKA";
+    console.log("========== CHALLAN TYPE ==========");
+console.log("BILTY TYPE:", biltyType);
+console.log("==================================");
+
   const file = req.file;
 
   if (!file) {
@@ -531,57 +543,40 @@ export async function uploadChallan(req) {
   // 2. PARSE MANIFEST
   // =====================================================
 
-  const parsed =
-    parseManifest(text);
+  const parsed = parseManifest(
+  text,
+  biltyType
+);
 
-  console.log(
-    "========== PARSED CHALLAN =========="
-  );
+console.log("========== PARSED CHALLAN ==========");
+console.log("Vehicle Number:", parsed.header?.vehicleNumber);
+console.log("Challan Number:", parsed.header?.challanNumber);
+console.log("Challan Date:", parsed.header?.challanDate);
+console.log("Rows:", parsed.rows?.length);
+console.log("====================================");
 
-  console.log(
-    parsed
-  );
+const challan = await prisma.vehicleChallan.create({
+  data: {
+    challanNumber: `CH-${Date.now()}`,
 
-  console.log(
-    "===================================="
-  );
+    challanDate: parseBiltyDate(
+      parsed.header?.challanDate
+    ),
 
-  // =====================================================
-  // 3. CREATE CHALLAN
-  // =====================================================
+    fileName: file.originalname,
+    fileUrl: file.filename,
 
-  const challan =
-    await prisma.vehicleChallan.create({
-      data: {
-        challanNumber:
-          `CH-${Date.now()}`,
+    branchId: Number(req.user?.branchId || 1),
+    createdById: Number(req.user?.id || 1),
 
-        challanDate:
-          parseBiltyDate(
-            parsed.header?.challanDate
-          ),
+    vehicleNumber:
+      parsed.header?.vehicleNumber || null,
 
-        fileName:
-          file.originalname,
+    biltyType,
 
-        fileUrl:
-          file.filename,
-
-        branchId:
-          Number(
-            req.user?.branchId || 1
-          ),
-
-        createdById:
-          Number(
-            req.user?.id || 1
-          ),
-
-        status:
-          "UPLOADED",
-      },
-    });
-
+    status: "UPLOADED",
+  },
+});
   // =====================================================
   // 4. SAVE PREVIEW ROWS
   // =====================================================

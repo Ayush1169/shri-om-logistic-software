@@ -11,13 +11,15 @@ import {
 export const getBilties = async (
   page = 1,
   search = "",
-  limit = 10
+  limit = 10,
+  biltyType = "PAKKA"
 ): Promise<BiltyListResponse> => {
   const { data } = await api.get("/bilties", {
     params: {
       page,
       limit,
       search,
+      biltyType,
     },
   });
 
@@ -65,6 +67,19 @@ export const deleteBilty = async (
   id: number | string
 ) => {
   const { data } = await api.delete(`/bilties/${id}`);
+
+  return data;
+};
+
+/**
+ * Delete all bilties of one challan
+ */
+export const deleteBiltiesByChallan = async (
+  challanId: number
+) => {
+  const { data } = await api.delete(
+    `/bilties/challan/${challanId}`
+  );
 
   return data;
 };

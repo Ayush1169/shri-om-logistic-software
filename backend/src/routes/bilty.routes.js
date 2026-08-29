@@ -8,6 +8,7 @@ import {
   remove,
   updateStatus,
   downloadPdf,
+  removeByChallan,
 } from "../controllers/bilty.controller.js";
 
 import { authMiddleware } from "../middleware/auth.middleware.js";
@@ -23,6 +24,12 @@ router.post("/", authMiddleware, create);
  * Get All Bilties
  */
 router.get("/", authMiddleware, getAll);
+
+router.delete(
+  "/challan/:challanId",
+  authMiddleware,
+  removeByChallan
+);
 
 /**
  * Get Bilty By ID

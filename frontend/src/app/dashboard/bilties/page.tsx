@@ -10,13 +10,17 @@ import ChallanPreviewModal from "@/components/bilty/ChallanPreviewModal";
 
 import {
   deleteBilty,
+  deleteBiltiesByChallan,
   getBilties,
 } from "@/services/bilty.service";
 
-import { Bilty } from "@/types/bilty";
+import { BiltyGroup } from "@/types/bilty";
 
 export default function BiltyPage() {
-  const [bilties, setBilties] = useState<Bilty[]>([]);
+  const [groups, setGroups] =
+  useState<BiltyGroup[]>([]);
+  const [biltyType, setBiltyType] =
+  useState<"PAKKA" | "KACHHA">("PAKKA");
   const [loading, setLoading] = useState(true);
   const [showChallanUploadModal, setShowChallanUploadModal] = useState(false);
   const [previewChallanId, setPreviewChallanId] =
@@ -37,11 +41,15 @@ export default function BiltyPage() {
       setLoading(true);
 
       const res = await getBilties(
-        page,
-        search
-      );
+  page,
+  search,
+  10,
+  biltyType
+);
 
-      setBilties(res.bilties);
+      console.log("BILTY API RESPONSE:", res);
+
+      setGroups(res.groups);
       setTotalPages(res.totalPages);
     } catch (err) {
       console.error(err);
@@ -52,7 +60,7 @@ export default function BiltyPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, search]);
+  }, [page, search, biltyType]);
 
   /**
    * Initial Load
@@ -102,18 +110,91 @@ export default function BiltyPage() {
       );
     }
   };
-    return (
-    <div className="space-y-6">
 
-      {/* Toolbar */}
-     <BiltyToolbar
-  search={search}
-  setSearch={setSearch}
-  onUploadChallan={() => setShowChallanUploadModal(true)}
-/>
+  const handleGroupDelete = async (
+  challanId: number
+) => {
+  const group = groups.find(
+    (item) => item.challanId === challanId
+  );
+
+  if (!group) {
+    toast.error("Challan not found");
+    return;
+  }
+
+  const ok = window.confirm(
+    `Are you sure you want to delete ${group.totalBilties} bilties of vehicle ${group.vehicleNumber}?`
+  );
+
+  if (!ok) return;
+
+  try {
+    await deleteBiltiesByChallan(challanId);
+
+    toast.success(
+      `${group.totalBilties} bilties deleted successfully`
+    );
+
+    await loadBilties();
+  } catch (err) {
+    console.error(err);
+
+    toast.error(
+      "Failed to delete vehicle bilties"
+    );
+  }
+};
+   return (
+  <div className="space-y-6">
+
+    {/* PAKKA / KACHHA */}
+    <div className="flex w-fit gap-2 rounded-lg border bg-white p-2">
+      <button
+        type="button"
+        onClick={() => {
+          setBiltyType("PAKKA");
+          setPage(1);
+        }}
+        className={`rounded-md px-5 py-2 text-sm font-semibold ${
+          biltyType === "PAKKA"
+            ? "bg-blue-600 text-white"
+            : "text-gray-600 hover:bg-gray-100"
+        }`}
+      >
+        Pakka
+      </button>
+
+      <button
+        type="button"
+        onClick={() => {
+          setBiltyType("KACHHA");
+          setPage(1);
+        }}
+        className={`rounded-md px-5 py-2 text-sm font-semibold ${
+          biltyType === "KACHHA"
+            ? "bg-blue-600 text-white"
+            : "text-gray-600 hover:bg-gray-100"
+        }`}
+      >
+        Kachha
+      </button>
+    </div>
+
+    {/* Toolbar */}
+    <BiltyToolbar
+      search={search}
+      setSearch={setSearch}
+      onUploadChallan={() =>
+        setShowChallanUploadModal(true)
+      }
+    />
+
+    {/* baaki tera code */}
 
    {showChallanUploadModal && (
   <ChallanUploadModal
+    biltyType={biltyType}
     onClose={() =>
       setShowChallanUploadModal(false)
     }
@@ -150,10 +231,11 @@ export default function BiltyPage() {
 
       {/* Table */}
       <BiltyTable
-        bilties={bilties}
-        loading={loading}
-        onDelete={handleDelete}
-      />
+  groups={groups}
+  loading={loading}
+  onDelete={handleDelete}
+  onGroupDelete={handleGroupDelete}
+/>
 
       {/* Pagination */}
       {!loading && totalPages > 1 && (
