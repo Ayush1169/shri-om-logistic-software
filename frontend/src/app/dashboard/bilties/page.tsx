@@ -162,7 +162,7 @@ export default function BiltyPage() {
             : "text-gray-600 hover:bg-gray-100"
         }`}
       >
-        Pakka
+        Part1
       </button>
 
       <button
@@ -177,7 +177,7 @@ export default function BiltyPage() {
             : "text-gray-600 hover:bg-gray-100"
         }`}
       >
-        Kachha
+        part2
       </button>
     </div>
 

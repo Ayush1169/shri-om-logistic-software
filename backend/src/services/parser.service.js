@@ -352,15 +352,33 @@ function parseRow(tokens, biltyType) {
   }
 
   /* =======================================================
-     PMARKA
-  ======================================================= */
+   CONSIGNEE + PMARKA
+======================================================= */
 
-  let marka = null;
+let consignee = null;
+let marka = null;
 
-  if (destinationIndex !== -1) {
+if (destinationIndex !== -1) {
 
-    const afterDestination =
-      tokens.slice(destinationIndex + 1);
+  const afterDestination =
+    tokens.slice(destinationIndex + 1);
+
+  /*
+   * =====================================================
+   * KACHHA
+   * =====================================================
+   *
+   * Example:
+   *
+   * KORBA 0801 3 - BWN- 412588 -
+   *
+   * 0801 = PMarka
+   * 3    = Packages
+   *
+   * Kachha mein consignee nahi lena.
+   */
+
+  if (biltyType === "KACHHA") {
 
     const numericIndex =
       afterDestination.findIndex(
@@ -383,7 +401,92 @@ function parseRow(tokens, biltyType) {
         marka = possibleMarka;
       }
     }
+
   }
+
+  /*
+   * =====================================================
+   * PAKKA
+   * =====================================================
+   *
+   * Pakka mein:
+   *
+   * KORBA CONSIGNEE PMARKA PKGS -
+   *
+   * Example:
+   *
+   * KORBA TIRUPATI MOTORS CMT 9 -
+   *
+   * Consignee = TIRUPATI MOTORS
+   * PMarka    = CMT
+   * Packages  = 9
+   */
+
+  if (biltyType === "PAKKA") {
+
+    let packageIndex = -1;
+
+    /*
+     * Packages ke baad "-" hota hai.
+     */
+    for (
+      let i = 0;
+      i < afterDestination.length - 1;
+      i++
+    ) {
+
+      if (
+        /^\d+$/.test(
+          afterDestination[i]
+        ) &&
+        afterDestination[i + 1] === "-"
+      ) {
+        packageIndex = i;
+        break;
+      }
+    }
+
+    if (packageIndex !== -1) {
+
+      const customerTokens =
+        afterDestination.slice(
+          0,
+          packageIndex
+        );
+
+      if (customerTokens.length >= 2) {
+
+        /*
+         * Last token = PMarka
+         */
+        marka =
+          customerTokens[
+            customerTokens.length - 1
+          ];
+
+        /*
+         * Baaki = Consignee
+         */
+        consignee =
+          customerTokens
+            .slice(0, -1)
+            .join(" ")
+            .trim() || null;
+
+      } else if (
+        customerTokens.length === 1
+      ) {
+
+        /*
+         * Sirf ek token hai,
+         * usko consignee maanenge.
+         */
+        consignee =
+          customerTokens[0];
+      }
+    }
+  }
+}
 
   /* =======================================================
      FREIGHT
@@ -425,38 +528,34 @@ function parseRow(tokens, biltyType) {
   console.log("========== PARSED ROW ==========");
 
   console.log({
-    biltyType,
-    serialNo,
-    biltyDate,
-    lrNo,
-    goods,
-    consignee: null,
-    marka,
-    packages,
-    weight,
-    freight,
-  });
+  biltyType,
+  serialNo,
+  biltyDate,
+  lrNo,
+  goods,
+  consignee,
+  marka,
+  packages,
+  weight,
+  freight,
+});
 
   console.log("================================");
 
   return {
-    serialNo,
-    biltyDate,
-    lrNo,
-    freight,
-    packages,
-    weight,
-    goods,
+  serialNo,
+  biltyDate,
+  lrNo,
+  freight,
+  packages,
+  weight,
+  goods,
 
-    /*
-     * Kachha mein consignee nahi chahiye.
-     */
-    consignee: null,
+  consignee,
 
-    marka,
+  marka,
+  pMarka: marka,
 
-    pMarka: marka,
-
-    rawTokens: tokens,
-  };
+  rawTokens: tokens,
+};
 }
