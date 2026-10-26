@@ -8,6 +8,9 @@ import customerRoutes from "./routes/customer.routes.js";
 import driverRoutes from "./routes/driver.routes.js";
 import biltyRoutes from "./routes/bilty.routes.js";
 import challanRoutes from "./routes/challan.routes.js";
+import cashReceiptRoutes from "./routes/cashReceipt.routes.js";
+import ledgerRoutes from "./routes/ledger.routes.js";
+import reportRoutes from "./routes/report.routes.js";
 
 
 const app = express();
@@ -21,6 +24,9 @@ app.use("/api/customers", customerRoutes);
 app.use("/api/drivers", driverRoutes);
 app.use("/api/bilties", biltyRoutes);
 app.use("/api/challans", challanRoutes);
+app.use("/api/cash-receipts", cashReceiptRoutes);
+app.use("/api/ledger", ledgerRoutes);
+app.use("/api/reports", reportRoutes);
 
 app.get("/", async (req, res) => {
 

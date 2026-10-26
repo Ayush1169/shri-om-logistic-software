@@ -49,10 +49,10 @@ const menuItems = [
     icon: FileText,
   },
   {
-    title: "Cash Receipt",
-    href: "/dashboard/accounts",
-    icon: Receipt,
-  },
+  title: "Cash Receipt (Memo)",
+  href: "/dashboard/cash-receipt/add",
+  icon: Receipt,
+},
   {
     title: "Ledger",
     href: "/dashboard/ledger",
